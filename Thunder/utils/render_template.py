@@ -2,7 +2,6 @@
 
 import asyncio
 import html as html_module
-import urllib.parse
 
 from jinja2 import Environment, FileSystemLoader
 from pyrogram.errors import FloodWait
@@ -25,7 +24,6 @@ template_env = Environment(
 
 async def render_page(id: int, secure_hash: str, requested_action: str | None = None) -> str:
     try:
-        # ===== fetch telegram message =====
         try:
             message = await StreamBot.get_messages(
                 chat_id=int(Var.BIN_CHANNEL),
@@ -41,36 +39,37 @@ async def render_page(id: int, secure_hash: str, requested_action: str | None = 
         if not message:
             raise InvalidHash("Message not found")
 
-        # ===== validate hash =====
         file_unique_id = get_uniqid(message)
         file_name = get_fname(message)
 
         if not file_unique_id or file_unique_id[:6] != secure_hash:
-            raise InvalidHash("Secure hash mismatch")
+            raise InvalidHash("Hash mismatch")
 
         safe_filename = html_module.escape(file_name)
 
-        # =================================================
-        # 🔥 MAIN FIX HERE (GK style URL, no filename)
-        # =================================================
-        src = urllib.parse.urljoin(
-            Var.URL.rstrip("/") + "/",
-            f"watch/{secure_hash}{id}"
-        )
+        # ===============================
+        # ✅ NEW CLEAN LINKS
+        # ===============================
+        base = Var.URL.rstrip("/")
 
-        # ===== choose template =====
+        stream_src = f"{base}/watch/{secure_hash}{id}"   # player
+        download_src = f"{base}/{secure_hash}{id}"       # direct download
+
+        # ===============================
+
         if requested_action == 'stream':
             template = template_env.get_template('req.html')
             context = {
                 'heading': f"View {safe_filename}",
                 'file_name': safe_filename,
-                'src': src
+                'src': stream_src,
+                'download': download_src   # ⭐ download button এর জন্য
             }
         else:
             template = template_env.get_template('dl.html')
             context = {
                 'file_name': safe_filename,
-                'src': src
+                'src': download_src
             }
 
         return await template.render_async(**context)
