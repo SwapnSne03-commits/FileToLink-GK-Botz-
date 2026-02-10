@@ -13,6 +13,7 @@ from Thunder.utils.file_properties import get_fname, get_uniqid
 from Thunder.utils.logger import logger
 from Thunder.vars import Var
 
+
 template_env = Environment(
     loader=FileSystemLoader('Thunder/template'),
     enable_async=True,
@@ -21,26 +22,43 @@ template_env = Environment(
     optimized=True
 )
 
+
 async def render_page(id: int, secure_hash: str, requested_action: str | None = None) -> str:
     try:
+        # ===== fetch telegram message =====
         try:
-            message = await StreamBot.get_messages(chat_id=int(Var.BIN_CHANNEL), message_ids=id)
+            message = await StreamBot.get_messages(
+                chat_id=int(Var.BIN_CHANNEL),
+                message_ids=id
+            )
         except FloodWait as e:
             await asyncio.sleep(e.value)
-            message = await StreamBot.get_messages(chat_id=int(Var.BIN_CHANNEL), message_ids=id)
-        
+            message = await StreamBot.get_messages(
+                chat_id=int(Var.BIN_CHANNEL),
+                message_ids=id
+            )
+
         if not message:
             raise InvalidHash("Message not found")
-        
+
+        # ===== validate hash =====
         file_unique_id = get_uniqid(message)
         file_name = get_fname(message)
-        
+
         if not file_unique_id or file_unique_id[:6] != secure_hash:
-            raise InvalidHash("File unique ID or secure hash mismatch during rendering.")
-        
-        quoted_filename = urllib.parse.quote(file_name.replace('/', '_'))
-        src = urllib.parse.urljoin(Var.URL, f'{secure_hash}{id}/{quoted_filename}')
+            raise InvalidHash("Secure hash mismatch")
+
         safe_filename = html_module.escape(file_name)
+
+        # =================================================
+        # 🔥 MAIN FIX HERE (GK style URL, no filename)
+        # =================================================
+        src = urllib.parse.urljoin(
+            Var.URL.rstrip("/") + "/",
+            f"watch/{secure_hash}{id}"
+        )
+
+        # ===== choose template =====
         if requested_action == 'stream':
             template = template_env.get_template('req.html')
             context = {
@@ -54,7 +72,12 @@ async def render_page(id: int, secure_hash: str, requested_action: str | None = 
                 'file_name': safe_filename,
                 'src': src
             }
+
         return await template.render_async(**context)
+
     except Exception as e:
-        logger.error(f"Error in render_page for ID {id} and hash {secure_hash}: {e}", exc_info=True)
+        logger.error(
+            f"Error in render_page for ID {id} and hash {secure_hash}: {e}",
+            exc_info=True
+        )
         raise
