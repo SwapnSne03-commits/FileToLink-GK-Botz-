@@ -39,7 +39,7 @@ async def render_page(id: int, secure_hash: str, requested_action: str | None = 
             raise InvalidHash("File unique ID or secure hash mismatch during rendering.")
         
         quoted_filename = urllib.parse.quote(file_name.replace('/', '_'))
-        src = urllib.parse.urljoin(Var.URL, f'{secure_hash}{id}/{quoted_filename}')
+        src = urllib.parse.urljoin(Var.URL.rstrip("/") + "/", f'{secure_hash}{id}')
         safe_filename = html_module.escape(file_name)
         if requested_action == 'stream':
             template = template_env.get_template('req.html')
@@ -58,3 +58,4 @@ async def render_page(id: int, secure_hash: str, requested_action: str | None = 
     except Exception as e:
         logger.error(f"Error in render_page for ID {id} and hash {secure_hash}: {e}", exc_info=True)
         raise
+
