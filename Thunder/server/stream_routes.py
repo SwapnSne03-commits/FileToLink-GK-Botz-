@@ -123,7 +123,10 @@ def parse_range_header(range_header: str, file_size: int) -> tuple[int, int]:
 
 @routes.get("/", allow_head=True)
 async def root_redirect(request):
-    raise web.HTTPFound("https://t.me/yours_swap_bot")
+    return web.Response(
+        text="<h3>✨ ᴀ ғᴀsᴛ ᴛᴇʟᴇɢʀᴀᴍ ᴍᴇᴅɪᴀ ᴅᴏᴡɴʟᴏᴀᴅ & sᴛʀᴇᴀᴍ ʙᴏᴛ, ᴍᴀᴅᴇ ʙʏ ~ Ꮪᴡᴀᴘɴᴏɴɪʟ !!✨</h3>",
+        content_type="text/html"
+    )
 
 
 @routes.get("/status", allow_head=True)
@@ -322,4 +325,5 @@ async def media_delivery(request: web.Request):
         logger.error(f"Server error {error_id}: {e}", exc_info=True)
         raise web.HTTPInternalServerError(
             text=f"An unexpected server error occurred: {error_id}") from e
+
 
